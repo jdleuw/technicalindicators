@@ -2053,14 +2053,24 @@ class VolumeProfile extends Indicator {
         var lows = input.low;
         var closes = input.close;
         var opens = input.open;
+        var volumesUp = input.volumeUp;
+        var volumesDown = input.volumeDown;
         var volumes = input.volume;
+
+        if (volumesUp.length && volumesDown.length && volumesUp.length === volumesDown.length && (!volumes || !volumes.length)) {
+          volumes = volumesUp
+          volumesDown.map((current, index) => volumes[index] += current)
+        }
         var bars = input.noOfBars;
         if (!((lows.length === highs.length) && (highs.length === closes.length) && (highs.length === volumes.length))) {
-            throw ('Inputs(low,high, close, volumes) not of equal size');
+            throw ('Inputs(low, high, close, volumes) not of equal size');
         }
-        this.result = [];
+        this.result = {
+          bars: []
+        };
         var max = Math.max(...highs, ...lows, ...closes, ...opens);
         var min = Math.min(...highs, ...lows, ...closes, ...opens);
+        var totalVolume = volumes.reduce((a, b) => a + b, 0)
         var barRange = (max - min) / bars;
         var lastEnd = min;
         for (let i = 0; i < bars; i++) {
@@ -2069,15 +2079,21 @@ class VolumeProfile extends Indicator {
             lastEnd = rangeEnd;
             let bullishVolume = 0;
             let bearishVolume = 0;
-            let totalVolume = 0;
+            let barVolume = 0;
+            let upVolume = 0;
+            let downVolume = 0;
             for (let priceBar = 0; priceBar < highs.length; priceBar++) {
                 let priceBarStart = lows[priceBar];
                 let priceBarEnd = highs[priceBar];
                 let priceBarOpen = opens[priceBar];
                 let priceBarClose = closes[priceBar];
                 let priceBarVolume = volumes[priceBar];
+                let priceBarUpVolume = volumesUp[priceBar];
+                let priceBarDownVolume = volumesDown[priceBar];
                 if (priceFallsBetweenBarRange(rangeStart, rangeEnd, priceBarStart, priceBarEnd)) {
-                    totalVolume = totalVolume + priceBarVolume;
+                    barVolume = barVolume + priceBarVolume;
+                    upVolume = upVolume + priceBarUpVolume;
+                    downVolume = downVolume + priceBarDownVolume;
                     if (priceBarOpen > priceBarClose) {
                         bearishVolume = bearishVolume + priceBarVolume;
                     }
@@ -2086,10 +2102,39 @@ class VolumeProfile extends Indicator {
                     }
                 }
             }
-            this.result.push({
-                rangeStart, rangeEnd, bullishVolume, bearishVolume, totalVolume
+            this.result.bars.push({
+                rangeStart, rangeEnd, bullishVolume, bearishVolume, barVolume, upVolume, downVolume
             });
         }
+
+        let highestBar = this.result.bars.reduce((a, b) => a.barVolume > b.barVolume ? a : b)
+        let highestBarIdx = this.result.bars.indexOf(highestBar)
+
+        let addedVolume = 0, lowerBarIdx = highestBarIdx, upperBarIdx = highestBarIdx, n = 0;
+        do {
+          if (lowerBarIdx === 0) {
+            upperBarIdx++
+            addedVolume += this.result.bars[upperBarIdx].barVolume;
+          } else if (upperBarIdx === this.result.bars.length - 1) {
+            lowerBarIdx--
+            addedVolume += this.result.bars[lowerBarIdx].barVolume;
+          } else {
+            if (this.result.bars[upperBarIdx+1].barVolume > this.result.bars[lowerBarIdx-1].barVolume) {
+              upperBarIdx++
+              addedVolume += this.result.bars[upperBarIdx].barVolume;
+            } else {
+              lowerBarIdx--
+              addedVolume += this.result.bars[lowerBarIdx].barVolume;
+            }
+          }
+
+          n++
+        } while (addedVolume <= totalVolume * 0.7 && n < this.result.bars.length)
+
+        this.result.lowerRange = this.result.bars[lowerBarIdx].rangeStart
+        this.result.upperRange = this.result.bars[upperBarIdx].rangeEnd
+        this.result.highestBar = highestBar
+
     }
     ;
     nextValue(price) {
@@ -2102,10 +2147,91 @@ function volumeprofile(input) {
     Indicator.reverseInputs(input);
     var result = new VolumeProfile(input).result;
     if (input.reversedInput) {
-        result.reverse();
+        result.bars.reverse();
     }
     Indicator.reverseInputs(input);
     return result;
+}
+
+class TickVolumeProfile extends Indicator {
+  constructor(input) {
+      super(input);
+      
+      var prices = input.price;
+      var volumesUp = input.volumeUp;
+      var volumesDown = input.volumeDown;
+      var volumes = input.volume;
+      
+      var bars = input.noOfBars;
+      if (!(prices.length === volumes.length)) {
+          throw ('Inputs(prices, volumes) not of equal size');
+      }
+      
+      var combined = [...prices].map((price, i) => {
+        return {
+          price,
+          volumeUp: volumesUp[i],
+          volumeDown: volumesDown[i],
+          volume: volumes[i],
+        }
+      })
+
+      var maxPrice = Math.max(...prices);
+      var minPrice = Math.min(...prices);
+      var totalVolume = volumes.reduce((a, b) => a + b, 0)
+      var maxVolume = Math.max(...volumes)
+      var maxVolumeIdx = volumes.indexOf(maxVolume)
+      var addedVolume = 0, lowerBarIdx = maxVolumeIdx, upperBarIdx = maxVolumeIdx, n = 0;
+      do {
+        if (lowerBarIdx === 0) {
+          upperBarIdx++
+          addedVolume += volumes[upperBarIdx];
+        } else if (upperBarIdx === volumes.length - 1) {
+          lowerBarIdx--
+          addedVolume += volumes[lowerBarIdx];
+        } else {
+          if (volumes[upperBarIdx+1] > volumes[lowerBarIdx-1]) {
+            upperBarIdx++
+            addedVolume += volumes[upperBarIdx];
+          } else {
+            lowerBarIdx--
+            addedVolume += volumes[lowerBarIdx];
+          }
+        }
+
+        n++
+      } while (addedVolume <= (totalVolume * 0.7) && n < volumes.length)
+
+      var hvn = [...combined].filter(b => b.price !== prices[maxVolumeIdx])
+      hvn.sort((a, b) => b.volume - a.volume)
+      
+      var lvn = [...combined].filter(b => b.price !== prices[maxVolumeIdx])
+      lvn.sort((a, b) => a.volume - b.volume)
+      
+      this.result = {
+        vah: prices[upperBarIdx],
+        val: prices[lowerBarIdx],
+        poc: prices[maxVolumeIdx],
+        ph: maxPrice,
+        pl: minPrice,
+        vol: totalVolume,
+        pocvol: volumes[maxVolumeIdx],
+        hvn: hvn.slice(0, 10).map(b => b.price),
+        lvn: lvn.slice(0, 10).map(b => b.price),
+        poc_hvn: hvn.filter(b => Math.abs(b.price - prices[maxVolumeIdx]) < 0.02 * b.price).slice(0, 10).map(b => b.price),
+        poc_lvn: lvn.filter(b => Math.abs(b.price - prices[maxVolumeIdx]) < 0.02 * b.price).slice(0, 10).map(b => b.price),
+      };
+  }
+  ;
+  nextValue(price) {
+      throw ('Next value not supported for volume profile');
+  }
+  ;
+}
+TickVolumeProfile.calculate = tickvolumeprofile;
+function tickvolumeprofile(input) {
+  var result = new TickVolumeProfile(input).result;
+  return result;
 }
 
 /**
@@ -4372,6 +4498,8 @@ exports.vwap = vwap;
 exports.VWAP = VWAP;
 exports.volumeprofile = volumeprofile;
 exports.VolumeProfile = VolumeProfile;
+exports.tickvolumeprofile = tickvolumeprofile;
+exports.TickVolumeProfile = TickVolumeProfile;
 exports.mfi = mfi;
 exports.MFI = MFI;
 exports.stochasticrsi = stochasticrsi;
