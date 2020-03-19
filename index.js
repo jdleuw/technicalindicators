@@ -76,17 +76,20 @@ export function getAvailableIndicators () {
   AvailableIndicators.push('tweezertop');
   AvailableIndicators.push('tweezerbottom');
 
-  AvailableIndicators.push('predictPattern');
-  AvailableIndicators.push('hasDoubleBottom');
-  AvailableIndicators.push('hasDoubleTop');
-  AvailableIndicators.push('hasHeadAndShoulder');
-  AvailableIndicators.push('hasInverseHeadAndShoulder');
-  AvailableIndicators.push('isTrendingUp');
-  AvailableIndicators.push('isTrendingDown');
+  // AvailableIndicators.push('predictPattern');
+  // AvailableIndicators.push('hasDoubleBottom');
+  // AvailableIndicators.push('hasDoubleTop');
+  // AvailableIndicators.push('hasHeadAndShoulder');
+  // AvailableIndicators.push('hasInverseHeadAndShoulder');
+  // AvailableIndicators.push('isTrendingUp');
+  // AvailableIndicators.push('isTrendingDown');
   AvailableIndicators.push('ichimokucloud');
   
   AvailableIndicators.push('keltnerchannels');
   AvailableIndicators.push('chandelierexit');
+  AvailableIndicators.push('crossup');
+  AvailableIndicators.push('crossdown');
+  AvailableIndicators.push('crossover');
   return AvailableIndicators;
 };
 

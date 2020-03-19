@@ -1,6 +1,6 @@
 {
   "name": "technicalindicators",
-  "version": "2.0.7",
+  "version": "3.1.0",
   "description": "Techincal Indicators written in javascript",
   "main": "dist/index.js",
   "module": "lib/index.js",
@@ -97,13 +97,17 @@
     "Hanging Man",
     "Shooting Star",
     "Tweezer Top",
-    "Tweezer Bottom"
+    "Tweezer Bottom",
+    "Cross Up",
+    "Cross Down",
+    "Cross Over"
   ],
   "author": "anand.anand84@gmail.com",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/anandanand84/technicalindicators/issues"
   },
+  "sideEffects": false,
   "homepage": "https://github.com/anandanand84/technicalindicators#readme",
   "devDependencies": {
     "@types/chai": "^3.0.0",
@@ -120,6 +124,7 @@
     "babel-runtime": "^6.23.0",
     "chai": "^3.0.0",
     "draw-candlestick": "2.0.3",
+    "dts-bundle": "^0.7.3",
     "gulp": "^3.9.1",
     "gulp-mocha": "^2.2.0",
     "gulp-util": "^3.0.7",
@@ -146,8 +151,6 @@
     "typescript": "^2.9.2"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^0.13.0",
-    "@tensorflow/tfjs-node": "^0.1.17",
     "@types/node": "^6.0.96"
   }
 }
